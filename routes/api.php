@@ -1,45 +1,76 @@
 <?php
 
+use App\Http\Controllers\Admin\UserController;
 use App\Http\Controllers\Auth\TokenController;
 use App\Http\Controllers\NotificationController;
+use App\Http\Controllers\Settings\NotificationSettingController;
+use App\Http\Controllers\Settings\PasswordController;
+use App\Http\Controllers\Settings\ProfileController;
+use App\Http\Controllers\TaskController;
 use Illuminate\Support\Facades\Route;
 
 /*
 |--------------------------------------------------------------------------
 | API Routes
 |--------------------------------------------------------------------------
-| Estas rotas são carregadas sob o middleware group 'api', que NÃO inclui
-| CSRF. Autenticação ocorre via Bearer token (Sanctum HasApiTokens).
-|
-| Para obter um token, o front-end deve:
-|   1. Fazer login pelo Fortify (POST /login) — estabelece sessão web
-|   2. Chamar POST /auth/token/session — retorna Bearer token para a sessão
-|   3. Ou chamar POST /api/auth/token — com email+password (uso externo/SPA)
+| Rotas de mutação (POST, PUT, PATCH, DELETE).
+| Autenticação via Bearer token (Sanctum) — obtido em POST /auth/token/session.
 */
 
-// ─── Rotas públicas ───────────────────────────────────────────────────────────
+// ─── Public ────────────────────────────────────────────────────────────────
+Route::prefix('/')->group(function () {
+    Route::get('notifications/vapid-key', [NotificationController::class, 'getVapidPublicKey']);
+    Route::post('auth/token', [TokenController::class, 'issue']);
+});
 
-// Chave pública VAPID para registro de push subscriptions no front-end
-Route::get('notifications/vapid-key', [NotificationController::class, 'getVapidPublicKey']);
-
-// Emitir token via credenciais (ex.: apps nativos, testes externos)
-Route::post('auth/token', [TokenController::class, 'issue']);
-
-// ─── Rotas autenticadas (Bearer token via Sanctum) ────────────────────────────
+// ─── Authenticated ────────────────────────────────────────────────────────────
 Route::middleware('auth:sanctum')->group(function () {
 
-    // Revogar token atual
     Route::delete('auth/token', [TokenController::class, 'revoke']);
 
-    // Push notifications
+    // ─── Tasks ───────────────────────────────────────────────────────────────
+    Route::prefix('tasks')->middleware('verified')->group(function () {
+        Route::post('/', [TaskController::class, 'store'])->name('tasks.store');
+        Route::post('{task}', [TaskController::class, 'update'])->name('tasks.update');
+        Route::delete('{task}', [TaskController::class, 'destroy'])->name('tasks.destroy');
+        Route::post('{task}/toggle', [TaskController::class, 'toggleComplete'])->name('tasks.toggle');
+    });
+
+    // ─── Settings ────────────────────────────────────────────────────────────
+    Route::prefix('settings')->middleware('verified')->group(function () {
+        Route::patch('profile', [ProfileController::class, 'update'])->name('profile.update');
+        Route::delete('profile', [ProfileController::class, 'destroy'])->name('profile.destroy');
+        Route::put('password', [PasswordController::class, 'update'])
+            ->middleware('throttle:6,1')
+            ->name('user-password.update');
+        Route::put('notifications', [NotificationSettingController::class, 'update'])
+            ->name('notification-settings.update');
+    });
+
+    // ─── Push notifications ──────────────────────────────────────────────────
     Route::prefix('notifications')->group(function () {
         Route::post('subscribe', [NotificationController::class, 'subscribe']);
         Route::post('unsubscribe', [NotificationController::class, 'unsubscribe']);
         Route::get('subscriptions', [NotificationController::class, 'getSubscriptions']);
         Route::post('test', [NotificationController::class, 'sendTestNotification']);
-
-        // Envio direcionado -- adicionar middleware de role quando implementado
         Route::post('send-to-user', [NotificationController::class, 'sendToUser']);
         Route::post('send-to-all', [NotificationController::class, 'sendToAll']);
+    });
+
+    // ─── Admin ───────────────────────────────────────────────────────────────
+    Route::middleware(['verified', 'admin'])->prefix('admin')->name('admin.')->group(function () {
+        Route::prefix('users')->name('users.')->group(function () {
+            Route::post('/', [UserController::class, 'store'])->name('store');
+            Route::patch('{user}', [UserController::class, 'update'])->name('update');
+            Route::delete('{user}', [UserController::class, 'destroy'])->name('destroy');
+            Route::post('{user}/send-password-reset', [UserController::class, 'sendPasswordReset'])
+                ->name('send-password-reset');
+            Route::post('{user}/reset-password', [UserController::class, 'resetPassword'])
+                ->name('reset-password');
+            Route::post('{user}/disable-two-factor', [UserController::class, 'disableTwoFactor'])
+                ->name('disable-two-factor');
+            Route::post('{user}/toggle-active', [UserController::class, 'toggleActive'])
+                ->name('toggle-active');
+        });
     });
 });

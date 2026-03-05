@@ -10,6 +10,7 @@ import { Toaster } from 'vue-sonner'
 import Notify from '@/utils/notify'
 import { initPWAInstaller } from './utils/installPWAHelper'
 import i18n from '@/plugins/i18n'
+import bus from '@/utils/eventBus';
 
 const appName = import.meta.env.VITE_APP_NAME || 'Laravel';
 
@@ -24,8 +25,8 @@ createInertiaApp({
         const app = createApp({ render: () => h(App, props) });
         app.component('InstallGuideIOS', InstallGuideIOS);
         app.component('Toaster', Toaster);
-        // register notify plugin correctly and initialize PWA installer
         app.use(Notify)
+        app.use(bus)
         app.use(i18n)
         initPWAInstaller()
         app.use(plugin).mount(el);

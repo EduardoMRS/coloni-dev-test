@@ -56,6 +56,10 @@ class TaskNotification extends Model
         return static::where('task_id', $taskId)
             ->where('channel', $channel)
             ->where('days_before', $daysBefore)
+            ->where(function ($q) {
+                $q->whereNotNull('sent_at')
+                  ->where('status', '!=', 'failed');
+            })
             ->exists();
     }
 }

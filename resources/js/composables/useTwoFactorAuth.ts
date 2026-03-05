@@ -1,6 +1,7 @@
 import type { ComputedRef, Ref } from 'vue';
 import { computed, ref } from 'vue';
 import { qrCode, recoveryCodes, secretKey } from '@/routes/two-factor';
+import http from '@/utils/http';
 
 export type UseTwoFactorAuthReturn = {
     qrCodeSvg: Ref<string | null>;
@@ -18,15 +19,8 @@ export type UseTwoFactorAuthReturn = {
 };
 
 const fetchJson = async <T>(url: string): Promise<T> => {
-    const response = await fetch(url, {
-        headers: { Accept: 'application/json' },
-    });
-
-    if (!response.ok) {
-        throw new Error(`Failed to fetch: ${response.status}`);
-    }
-
-    return response.json();
+    const { data } = await http.get<T>(url);
+    return data;
 };
 
 const errors = ref<string[]>([]);

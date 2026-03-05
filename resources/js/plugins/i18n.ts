@@ -14,4 +14,13 @@ const i18n = createI18n<[MessageSchema], 'pt-BR' | 'en'>({
     },
 });
 
-export default i18n;
+export default {
+  install(app: any) {
+    app.config.globalProperties.$t = i18n.global.t;
+    app.provide('$t', i18n.global.t);
+
+    if (typeof window !== 'undefined') {
+      window.$t = i18n.global.t;
+    }
+  }
+};

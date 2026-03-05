@@ -26,7 +26,6 @@ onMounted(async () => {
             localStorage.setItem('api_token', data.token)
         }
     } catch {
-        // Não-fatal: a app funciona via sessão mesmo sem token Bearer
     }
 })
 </script>

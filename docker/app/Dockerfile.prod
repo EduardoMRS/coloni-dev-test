@@ -84,6 +84,7 @@ RUN apt-get update \
         ca-certificates \
         netcat-openbsd \
         default-mysql-client \
+        cron \
     && rm -rf /var/lib/apt/lists/*
 
 RUN docker-php-ext-install pdo_mysql bcmath

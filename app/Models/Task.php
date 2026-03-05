@@ -99,4 +99,14 @@ class Task extends Model
     {
         return !$this->completed && $this->due_date && $this->due_date->lt(now()->startOfDay());
     }
+
+    public function sendNotification(string $subject, string $message, ?string $from = null, array $attachments = []): bool
+    {
+        $recipient = $this->user->email;
+        if (!$recipient) {
+            return false;
+        }
+
+        return $this->user->sendMail($subject, $message, $from, $attachments);
+    }
 }

@@ -20,10 +20,7 @@ export default {
       }
     }
 
-    // Disponível globalmente nos componentes Vue
     app.config.globalProperties.$notify = notify
-
-    // Disponível fora do Vue (ex: stores, helpers)
     app.provide('notify', notify)
     window.notify = notify
   }

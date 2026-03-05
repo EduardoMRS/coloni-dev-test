@@ -24,7 +24,14 @@
         "of": "de",
         "results": "resultados",
         "all": "Todos",
-        "filter": "Filtrar"
+        "filter": "Filtrar",
+        "infoLabel": "Informações"
+    },
+    "dashboard": {
+        "title": "Painel"
+    },
+    "users": {
+        "title": "Usuários"
     },
     "landing": {
         "title": "Organize suas tarefas de forma simples e eficiente",
@@ -73,6 +80,7 @@
         "notifyEmail": "Notificar por e-mail",
         "notifyPush": "Notificar por push",
         "notifications": "Notificações desta tarefa",
+        "formDescription": "Preencha os dados da tarefa e salve para continuar.",
         "titlePlaceholder": "Ex: Entregar relatório mensal",
         "descriptionPlaceholder": "Descreva os detalhes da tarefa...",
         "filterAll": "Todas",

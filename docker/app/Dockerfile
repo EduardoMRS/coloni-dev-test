@@ -14,6 +14,7 @@ RUN apt-get update \
         npm \
         pkg-config \
         build-essential \
+        cron \
     && rm -rf /var/lib/apt/lists/*
 
 # Build and install PHP extensions

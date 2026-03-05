@@ -25,12 +25,12 @@ const isAdmin = computed(() => auth.value?.user?.role === 'admin');
 
 const mainNavItems: NavItem[] = [
     {
-        title: 'Dashboard',
+        title: $t('dashboard.title'),
         href: dashboard(),
         icon: LayoutGrid,
     },
     {
-        title: 'Tarefas',
+        title: $t('tasks.title'),
         href: '/tasks',
         icon: ListTodo,
     },
@@ -38,7 +38,7 @@ const mainNavItems: NavItem[] = [
 
 const adminNavItems: NavItem[] = [
     {
-        title: 'Usuários',
+        title: $t('users.title'),
         href: '/admin/users',
         icon: Users,
     },
@@ -46,13 +46,13 @@ const adminNavItems: NavItem[] = [
 
 const footerNavItems: NavItem[] = [
     {
-        title: 'Github Repo',
+        title: 'Github Repo Base',
         href: 'https://github.com/laravel/vue-starter-kit',
         icon: Folder,
     },
     {
-        title: 'Documentation',
-        href: 'https://laravel.com/docs/starter-kits#vue',
+        title: $t('app.infoLabel'),
+        href: '/',
         icon: BookOpen,
     },
 ];

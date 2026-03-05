@@ -26,6 +26,10 @@ case "$1" in
         shift
         docker compose -f "$COMPOSE_FILE" exec redis redis-cli "$@"
         ;;
+    npm)
+        shift
+        docker compose -f "$COMPOSE_FILE" exec app npm "$@"
+        ;;
     logs)
         shift
         docker compose -f "$COMPOSE_FILE" logs -f "$@"

@@ -1,7 +1,7 @@
 <script setup lang="ts">
-import { computed, ref, watch } from 'vue';
-import { Head, router, useForm, usePage } from '@inertiajs/vue3';
-import { useI18n } from 'vue-i18n';
+import { computed, onMounted, ref, watch } from 'vue';
+import { Head, router, usePage } from '@inertiajs/vue3';
+import http from '@/utils/http';
 import {
     CalendarDays,
     CheckCircle2,
@@ -40,8 +40,8 @@ import {
 import { Input } from '@/components/ui/input';
 import AppLayout from '@/layouts/AppLayout.vue';
 import { type BreadcrumbItem } from '@/types';
-
-const { t } = useI18n();
+import ContextMenu from '@/components/ContextMenu.vue';
+import Form, { type TaskFormData } from './Form.vue';
 
 // ─────────────────────────── Types ───────────────────────────
 
@@ -79,7 +79,7 @@ const props = defineProps<Props>();
 // ─────────────────────────── Breadcrumbs ─────────────────────
 
 const breadcrumbs: BreadcrumbItem[] = [
-    { title: t('tasks.title'), href: '/tasks' },
+    { title: $t('tasks.title'), href: '/tasks' },
 ];
 
 // ─────────────────────────── Search/Filter ───────────────────
@@ -103,11 +103,16 @@ watch([searchQuery, statusFilter], () => {
 
 const showDeleteConfirm = ref(false);
 const selectedTask = ref<Task | null>(null);
+const showTaskForm = ref(false);
+const selectedTaskForForm = ref<TaskFormData | undefined>(undefined);
+const rowContextMenu = ref<any>(null);
+const rowContextMenuItems = ref<any[]>([]);
 
 // ─────────────────────────── Actions ─────────────────────────
 
-function toggleComplete(task: Task) {
-    router.patch(`/tasks/${task.id}/toggle`, {}, { preserveState: true });
+async function toggleComplete(task: Task) {
+    await http.post(`/api/tasks/${task.id}/toggle`);
+    router.reload({ only: ['tasks'], preserveState: true });
 }
 
 function openDelete(task: Task) {
@@ -115,24 +120,21 @@ function openDelete(task: Task) {
     showDeleteConfirm.value = true;
 }
 
-function confirmDelete() {
+async function confirmDelete() {
     if (!selectedTask.value) return;
-    router.delete(`/tasks/${selectedTask.value.id}`, {
-        onSuccess: () => {
-            showDeleteConfirm.value = false;
-        },
-    });
+    await http.delete(`/api/tasks/${selectedTask.value.id}`);
+    showDeleteConfirm.value = false;
+    router.reload({ only: ['tasks'] });
+}
+
+function openCreateForm() {
+    selectedTaskForForm.value = undefined;
+    showTaskForm.value = true;
 }
 
 function isOverdue(task: Task): boolean {
     if (task.completed || !task.due_date) return false;
     return new Date(task.due_date + 'T00:00:00') < new Date(new Date().toDateString());
-}
-
-function statusBadge(task: Task) {
-    if (task.completed) return { label: t('tasks.completed'), variant: 'secondary' as const };
-    if (isOverdue(task)) return { label: t('tasks.overdue'), variant: 'destructive' as const };
-    return { label: t('tasks.pending'), variant: 'outline' as const };
 }
 
 function formatDate(date: string | null): string {
@@ -141,22 +143,63 @@ function formatDate(date: string | null): string {
     return new Date(_date + 'T00:00:00').toLocaleDateString('pt-BR');
 }
 
+function openEditForm(task: Task) {
+    selectedTaskForForm.value = {
+        id: task.id,
+        title: task.title,
+        description: task.description,
+        due_date: task.due_date,
+        notify_email: task.notify_email,
+        notify_push: task.notify_push,
+    };
+    showTaskForm.value = true;
+}
+
+function openRowContextMenu(task: Task, event: MouseEvent) {
+    event.preventDefault();
+
+    rowContextMenuItems.value = [
+        {
+            label: task.completed ? $t('tasks.markPending') : $t('tasks.markCompleted'),
+            action: () => toggleComplete(task),
+        },
+        {
+            label: $t('app.edit'),
+            action: () => openEditForm(task),
+        },
+        { divider: true },
+        {
+            label: $t('app.delete'),
+            action: () => openDelete(task),
+        },
+    ];
+
+    rowContextMenu.value?.open(event.clientX, event.clientY);
+}
+
+watch(showTaskForm, (isOpen) => {
+    if (!isOpen) {
+        selectedTaskForForm.value = undefined;
+    }
+});
+
+
 // Flash message
 const page = usePage();
 const flash = computed(() => (page.props as any).flash as { success?: string; error?: string } | undefined);
 </script>
 
 <template>
-    <Head :title="t('tasks.myTasks')" />
+    <Head :title="$t('tasks.myTasks')" />
 
     <AppLayout :breadcrumbs="breadcrumbs">
         <div class="flex flex-col gap-6 p-4">
 
             <!-- Header -->
             <div class="flex items-center justify-between">
-                <Heading variant="small" :title="t('tasks.myTasks')" />
-                <Button size="sm" @click="router.get('/tasks/create')">
-                    <Plus class="mr-1 size-4" /> {{ t('tasks.newTask') }}
+                <Heading variant="small" :title="$t('tasks.myTasks')" />
+                <Button size="sm" @click="openCreateForm">
+                    <Plus class="mr-1 size-4" /> {{ $t('tasks.newTask') }}
                 </Button>
             </div>
 
@@ -169,17 +212,17 @@ const flash = computed(() => (page.props as any).flash as { success?: string; er
             <div class="flex flex-wrap gap-2">
                 <Input
                     v-model="searchQuery"
-                    :placeholder="t('tasks.searchPlaceholder')"
+                    :placeholder="$t('tasks.searchPlaceholder')"
                     class="w-full max-w-xs"
                 />
                 <select
                     v-model="statusFilter"
                     class="rounded-md border border-input bg-background px-3 py-2 text-sm shadow-sm"
                 >
-                    <option value="">{{ t('tasks.filterAll') }}</option>
-                    <option value="pending">{{ t('tasks.filterPending') }}</option>
-                    <option value="completed">{{ t('tasks.filterCompleted') }}</option>
-                    <option value="overdue">{{ t('tasks.filterOverdue') }}</option>
+                    <option value="">{{ $t('tasks.filterAll') }}</option>
+                    <option value="pending">{{ $t('tasks.filterPending') }}</option>
+                    <option value="completed">{{ $t('tasks.filterCompleted') }}</option>
+                    <option value="overdue">{{ $t('tasks.filterOverdue') }}</option>
                 </select>
             </div>
 
@@ -188,20 +231,25 @@ const flash = computed(() => (page.props as any).flash as { success?: string; er
                 <table class="min-w-full divide-y divide-border text-sm">
                     <thead class="bg-muted/40">
                         <tr>
-                            <th class="px-4 py-3 text-left font-medium text-muted-foreground">{{ t('tasks.status') }}</th>
-                            <th class="px-4 py-3 text-left font-medium text-muted-foreground">{{ t('tasks.taskTitle') }}</th>
-                            <th class="hidden px-4 py-3 text-left font-medium text-muted-foreground md:table-cell">{{ t('tasks.dueDate') }}</th>
-                            <th class="hidden px-4 py-3 text-left font-medium text-muted-foreground sm:table-cell">{{ t('notifications.title') }}</th>
-                            <th class="px-4 py-3 text-right font-medium text-muted-foreground">{{ t('app.actions') }}</th>
+                            <th class="px-4 py-3 text-left font-medium text-muted-foreground">{{ $t('tasks.status') }}</th>
+                            <th class="px-4 py-3 text-left font-medium text-muted-foreground">{{ $t('tasks.taskTitle') }}</th>
+                            <th class="hidden px-4 py-3 text-left font-medium text-muted-foreground md:table-cell">{{ $t('tasks.dueDate') }}</th>
+                            <th class="hidden px-4 py-3 text-left font-medium text-muted-foreground sm:table-cell">{{ $t('notifications.title') }}</th>
+                            <th class="px-4 py-3 text-right font-medium text-muted-foreground">{{ $t('app.actions') }}</th>
                         </tr>
                     </thead>
                     <tbody class="divide-y divide-border">
-                        <tr v-for="task in tasks.data" :key="task.id" class="hover:bg-muted/20 transition-colors">
+                        <tr
+                            v-for="task in tasks.data"
+                            :key="task.id"
+                            class="hover:bg-muted/20 transition-colors"
+                            @contextmenu="openRowContextMenu(task, $event)"
+                        >
                             <td class="px-4 py-3">
                                 <button
                                     @click="toggleComplete(task)"
                                     class="flex items-center justify-center transition-colors"
-                                    :title="task.completed ? t('tasks.markPending') : t('tasks.markCompleted')"
+                                    :title="task.completed ? $t('tasks.markPending') : $t('tasks.markCompleted')"
                                 >
                                     <CheckCircle2 v-if="task.completed" class="size-5 text-green-500" />
                                     <Circle v-else class="size-5 text-muted-foreground hover:text-primary" />
@@ -229,9 +277,9 @@ const flash = computed(() => (page.props as any).flash as { success?: string; er
                             </td>
                             <td class="hidden px-4 py-3 sm:table-cell">
                                 <div class="flex gap-1">
-                                    <Mail v-if="task.notify_email" class="size-4 text-blue-500" :title="t('tasks.notifyEmail')" />
+                                    <Mail v-if="task.notify_email" class="size-4 text-blue-500" :title="$t('tasks.notifyEmail')" />
                                     <MailX v-else class="size-4 text-muted-foreground/40" />
-                                    <Bell v-if="task.notify_push" class="size-4 text-purple-500" :title="t('tasks.notifyPush')" />
+                                    <Bell v-if="task.notify_push" class="size-4 text-purple-500" :title="$t('tasks.notifyPush')" />
                                     <BellOff v-else class="size-4 text-muted-foreground/40" />
                                 </div>
                             </td>
@@ -245,17 +293,17 @@ const flash = computed(() => (page.props as any).flash as { success?: string; er
                                     <DropdownMenuContent align="end" class="w-48">
                                         <DropdownMenuItem @click="toggleComplete(task)">
                                             <CheckCircle2 class="mr-2 size-4" />
-                                            {{ task.completed ? t('tasks.markPending') : t('tasks.markCompleted') }}
+                                            {{ task.completed ? $t('tasks.markPending') : $t('tasks.markCompleted') }}
                                         </DropdownMenuItem>
-                                        <DropdownMenuItem @click="router.get(`/tasks/${task.id}/edit`)">
-                                            <Pencil class="mr-2 size-4" /> {{ t('app.edit') }}
+                                        <DropdownMenuItem @click="openEditForm(task)">
+                                            <Pencil class="mr-2 size-4" /> {{ $t('app.edit') }}
                                         </DropdownMenuItem>
                                         <DropdownMenuSeparator />
                                         <DropdownMenuItem
                                             class="text-destructive focus:text-destructive"
                                             @click="openDelete(task)"
                                         >
-                                            <Trash2 class="mr-2 size-4" /> {{ t('app.delete') }}
+                                            <Trash2 class="mr-2 size-4" /> {{ $t('app.delete') }}
                                         </DropdownMenuItem>
                                     </DropdownMenuContent>
                                 </DropdownMenu>
@@ -265,9 +313,9 @@ const flash = computed(() => (page.props as any).flash as { success?: string; er
                             <td colspan="5" class="px-4 py-12 text-center text-muted-foreground">
                                 <div class="flex flex-col items-center gap-2">
                                     <Clock class="size-8 text-muted-foreground/50" />
-                                    <p>{{ t('tasks.noTasks') }}</p>
-                                    <Button size="sm" variant="outline" @click="router.get('/tasks/create')">
-                                        <Plus class="mr-1 size-4" /> {{ t('tasks.newTask') }}
+                                    <p>{{ $t('tasks.noTasks') }}</p>
+                                    <Button size="sm" variant="outline" @click="openCreateForm">
+                                        <Plus class="mr-1 size-4" /> {{ $t('tasks.newTask') }}
                                     </Button>
                                 </div>
                             </td>
@@ -278,7 +326,7 @@ const flash = computed(() => (page.props as any).flash as { success?: string; er
 
             <!-- Pagination -->
             <div v-if="tasks.total > 0" class="flex items-center justify-between text-sm text-muted-foreground">
-                <span>{{ tasks.total }} {{ t('tasks.title').toLowerCase() }} &bull; {{ t('app.showing') }} {{ tasks.data.length }} {{ t('app.of') }} {{ tasks.total }}</span>
+                <span>{{ tasks.total }} {{ $t('tasks.title').toLowerCase() }} &bull; {{ $t('app.showing') }} {{ tasks.data.length }} {{ $t('app.of') }} {{ tasks.total }}</span>
                 <div class="flex gap-1">
                     <Button
                         variant="outline" size="icon"
@@ -302,14 +350,22 @@ const flash = computed(() => (page.props as any).flash as { success?: string; er
         <Dialog v-model:open="showDeleteConfirm">
             <DialogContent class="sm:max-w-md">
                 <DialogHeader>
-                    <DialogTitle>{{ t('tasks.deleteTask') }}</DialogTitle>
-                    <DialogDescription>{{ t('tasks.confirmDelete') }}</DialogDescription>
+                    <DialogTitle>{{ $t('tasks.deleteTask') }}</DialogTitle>
+                    <DialogDescription>{{ $t('tasks.confirmDelete') }}</DialogDescription>
                 </DialogHeader>
                 <DialogFooter>
-                    <Button type="button" variant="outline" @click="showDeleteConfirm = false">{{ t('app.cancel') }}</Button>
-                    <Button variant="destructive" @click="confirmDelete">{{ t('app.delete') }}</Button>
+                    <Button type="button" variant="outline" @click="showDeleteConfirm = false">{{ $t('app.cancel') }}</Button>
+                    <Button variant="destructive" @click="confirmDelete">{{ $t('app.delete') }}</Button>
                 </DialogFooter>
             </DialogContent>
         </Dialog>
+
+        <Form v-model="showTaskForm" :task="selectedTaskForForm" />
+
+        <ContextMenu
+            ref="rowContextMenu"
+            :menu-items="rowContextMenuItems"
+            variant="light"
+        />
     </AppLayout>
 </template>

@@ -24,7 +24,14 @@
         "of": "of",
         "results": "results",
         "all": "All",
-        "filter": "Filter"
+        "filter": "Filter",
+        "infoLabel": "Info"
+    },
+    "dashboard": {
+        "title": "Dashboard"
+    },
+    "users": {
+        "title": "Users"
     },
     "landing": {
         "title": "Organize your tasks simply and efficiently",
@@ -73,6 +80,7 @@
         "notifyEmail": "Notify by email",
         "notifyPush": "Notify by push",
         "notifications": "Notifications for this task",
+        "formDescription": "Fill in the task details and save to continue.",
         "titlePlaceholder": "E.g.: Submit monthly report",
         "descriptionPlaceholder": "Describe the task details...",
         "filterAll": "All",

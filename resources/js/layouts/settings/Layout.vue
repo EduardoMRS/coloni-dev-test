@@ -12,27 +12,25 @@ import { show } from '@/routes/two-factor';
 import { edit as editPassword } from '@/routes/user-password';
 import { type NavItem } from '@/types';
 
-const { t } = useI18n();
-
 const sidebarNavItems: NavItem[] = [
     {
-        title: t('settings.profile'),
+        title: $t('settings.profile'),
         href: editProfile(),
     },
     {
-        title: t('settings.password'),
+        title: $t('settings.password'),
         href: editPassword(),
     },
     {
-        title: t('settings.twoFactor'),
+        title: $t('settings.twoFactor'),
         href: show(),
     },
     {
-        title: t('settings.notifications'),
+        title: $t('settings.notifications'),
         href: '/settings/notifications',
     },
     {
-        title: t('settings.appearance'),
+        title: $t('settings.appearance'),
         href: editAppearance(),
     },
 ];
@@ -43,8 +41,8 @@ const { isCurrentUrl } = useCurrentUrl();
 <template>
     <div class="px-4 py-6">
         <Heading
-            :title="t('settings.title')"
-            :description="t('settings.description')"
+            :title="$t('settings.title')"
+            :description="$t('settings.description')"
         />
 
         <div class="flex flex-col lg:flex-row lg:space-x-12">

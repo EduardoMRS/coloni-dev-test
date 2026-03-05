@@ -19,7 +19,7 @@ return new class extends Migration
             $table->timestamps();
 
             // Evitar envio duplicado: mesma tarefa, mesmo canal, mesma antecedência
-            $table->unique(['task_id', 'channel', 'days_before'], 'task_notif_unique');
+            $table->unique(['task_id', 'channel', 'days_before', 'status'], 'task_notif_unique');
             $table->index(['user_id', 'task_id']);
         });
     }

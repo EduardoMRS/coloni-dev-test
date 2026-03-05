@@ -1,6 +1,14 @@
 # Task Manager — Laravel + Vue + Inertia
 
-Aplicação de gerenciamento de tarefas construída com **Laravel 12**, **Vue 3**, **Inertia.js** e **PostgreSQL**, rodando 100 % em Docker utilizando template base disponivel em https://github.com/laravel/vue-starter-kit
+Aplicação de gerenciamento de tarefas construída com **Laravel 12**, **Vue 3**, **Inertia.js** e **PostgreSQL**, rodando 100% em Docker.
+
+## Base do projeto
+
+Este projeto foi desenvolvido com base no repositório [laravel/vue-starter-kit](https://github.com/laravel/vue-starter-kit), com a adição de:
+
+- Estrutura Docker para ambiente completo de desenvolvimento
+- Assets prontos reaproveitados de outros projetos para acelerar a interface
+- Componentes com **reka-ui** para acelerar o desenvolvimento do frontend
 
 ## Funcionalidades
 
@@ -22,7 +30,7 @@ Aplicação de gerenciamento de tarefas construída com **Laravel 12**, **Vue 3*
 
 ```bash
 # 1. Clone o repositório
-git clone <lembrar_de_colocar_a_url> && cd laravel_vue_template
+gh repo clone EduardoMRS/coloni-dev-test && cd coloni-dev-test
 
 # 2. Copie e ajuste o .env
 cp .env.example .env
@@ -56,10 +64,9 @@ Após a inicialização, acesse **http://localhost** (ou a porta configurada).
 | db          | PostgreSQL 16                          | 5432         |
 | redis       | Redis 7                                | 6379         |
 | queue       | Worker de filas (Laravel Queue)        | —            |
-| scheduler   | Schedule runner (`schedule:run` 60 s)  | —            |
 | mail        | Mailpit (captura de e-mails)           | 8025         |
 
-## Stack técnica
+## Tecnologias usadas
 
 - **Backend:** Laravel 12, Fortify, Sanctum, Inertia.js v2
 - **Frontend:** Vue 3.5, TypeScript, Tailwind CSS v4, reka-ui / shadcn-vue
@@ -78,6 +85,7 @@ app/
   Models/Task.php                          # Model de tarefa
   Models/NotificationSetting.php           # Configuração de notificação
   Notifications/TaskReminderNotification.php
+docs/ # Usado para exemplificar uso de recursos ou funcionalidades
 resources/js/
   pages/tasks/                             # Páginas Vue de tarefas
   pages/settings/Notifications.vue         # Configuração de notificações
@@ -107,3 +115,7 @@ mcp/                                       # Documentação MCP para IAs
 # Executar comandos node
 ./art npm
 ```
+
+## Melhorias futuras
+- Implementar funcionalidades a tela inicial
+- Permitir ajustar data de lembrete de tarefas em cada tarefa permitindo assim ajustar com quantos dias antes do vencimento será enviado a notificação

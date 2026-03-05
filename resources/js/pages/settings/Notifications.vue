@@ -1,6 +1,6 @@
 <script setup lang="ts">
-import { computed, onBeforeUnmount, onMounted } from 'vue';
-import { Head, useForm, usePage } from '@inertiajs/vue3';
+import { computed, onBeforeUnmount, onMounted, ref } from 'vue';
+import { Head, router, usePage } from '@inertiajs/vue3';
 import { useI18n } from 'vue-i18n';
 import Heading from '@/components/Heading.vue';
 import InputError from '@/components/InputError.vue';
@@ -16,8 +16,6 @@ import http from '@/utils/http';
 
 const { subscribed, toggle } = usePush();
 
-const { t } = useI18n();
-
 type NotificationSetting = {
     id: number;
     days_before: number;
@@ -26,45 +24,6 @@ type NotificationSetting = {
 };
 
 const props = defineProps<{ setting: NotificationSetting }>();
-
-const breadcrumbItems: BreadcrumbItem[] = [
-    { title: t('notifications.settings'), href: '/settings/notifications' },
-];
-
-const form = useForm({
-    days_before: props.setting.days_before,
-    email_enabled: props.setting.email_enabled,
-    push_enabled: props.setting.push_enabled,
-});
-
-function submit() {
-    form.put('/settings/notifications');
-}
-
-function persistBeforeLeave() {
-    if (!form.isDirty) return;
-
-    const csrf = document
-        .querySelector('meta[name="csrf-token"]')
-        ?.getAttribute('content');
-
-    const payload = new URLSearchParams({
-        days_before: String(form.days_before ?? ''),
-        email_enabled: form.email_enabled ? '1' : '0',
-        push_enabled: form.push_enabled ? '1' : '0',
-    });
-
-    http.put('/settings/notifications', payload);
-}
-
-function handlePageLeave() {
-    persistBeforeLeave();
-}
-
-function togglePush() {
-    toggle();
-    form.push_enabled = subscribed.value;
-}
 
 onMounted(() => {
     window.addEventListener('beforeunload', handlePageLeave);
@@ -77,20 +36,77 @@ onBeforeUnmount(() => {
     persistBeforeLeave();
 });
 
+
+const breadcrumbItems: BreadcrumbItem[] = [
+    { title: $t('notifications.settings'), href: '/settings/notifications' },
+];
+
+const form = ref({
+    days_before: props.setting.days_before,
+    email_enabled: props.setting.email_enabled,
+    push_enabled: props.setting.push_enabled,
+});
+
+const initialValues = { ...form.value };
+const formLoading = ref(false);
+const formErrors = ref<Record<string, string>>({});
+
+const isDirty = computed(
+    () =>
+        form.value.days_before   !== initialValues.days_before ||
+        form.value.email_enabled !== initialValues.email_enabled ||
+        form.value.push_enabled  !== initialValues.push_enabled,
+);
+
+
 const page = usePage();
+
+// Computed
 const flash = computed(() => (page.props as any).flash as { success?: string; error?: string } | undefined);
+
+// Methods
+async function submit() {
+    formLoading.value = true;
+    formErrors.value = {};
+    try {
+        await http.put('/api/settings/notifications', form.value);
+        Object.assign(initialValues, form.value);
+        router.reload({ preserveState: true });
+    } catch (e: any) {
+        formErrors.value = e.response?.data?.errors ?? {};
+    } finally {
+        formLoading.value = false;
+    }
+}
+
+function persistBeforeLeave() {
+    if (!isDirty.value) return;
+
+    http.put('/api/settings/notifications', form.value);
+}
+
+function handlePageLeave() {
+    persistBeforeLeave();
+}
+
+function togglePush(value: boolean) {
+    if (value !== subscribed.value) {
+        toggle();
+    }
+    form.push_enabled = value;
+}
 </script>
 
 <template>
     <AppLayout :breadcrumbs="breadcrumbItems">
-        <Head :title="t('notifications.settings')" />
+        <Head :title="$t('notifications.settings')" />
 
         <SettingsLayout>
             <div class="space-y-6">
                 <Heading
                     variant="small"
-                    :title="t('notifications.settings')"
-                    :description="t('notifications.settingsDescription')"
+                    :title="$t('notifications.settings')"
+                    :description="$t('notifications.settingsDescription')"
                 />
 
                 <!-- Flash -->
@@ -104,7 +120,7 @@ const flash = computed(() => (page.props as any).flash as { success?: string; er
                 <form @submit.prevent="submit" class="space-y-6">
                     <!-- Days before -->
                     <div class="grid gap-2">
-                        <Label for="days_before">{{ t('notifications.daysBefore') }}</Label>
+                        <Label for="days_before">{{ $t('notifications.daysBefore') }}</Label>
                         <Input
                             id="days_before"
                             type="number"
@@ -114,17 +130,17 @@ const flash = computed(() => (page.props as any).flash as { success?: string; er
                             class="max-w-[120px]"
                         />
                         <p class="text-sm text-muted-foreground">
-                            {{ t('notifications.daysBeforeHelp') }}
+                            {{ $t('notifications.daysBeforeHelp') }}
                         </p>
-                        <InputError :message="form.errors.days_before" />
+                        <InputError :message="formErrors.days_before" />
                     </div>
 
                     <!-- Email toggle -->
                     <div class="flex items-center justify-between rounded-lg border p-4">
                         <div class="space-y-0.5">
-                            <Label for="email_enabled">{{ t('notifications.emailEnabled') }}</Label>
+                            <Label for="email_enabled">{{ $t('notifications.emailEnabled') }}</Label>
                             <p class="text-sm text-muted-foreground">
-                                {{ t('notifications.emailEnabledHelp') }}
+                                {{ $t('notifications.emailEnabledHelp') }}
                             </p>
                         </div>
                         <Switch
@@ -136,15 +152,15 @@ const flash = computed(() => (page.props as any).flash as { success?: string; er
                     <!-- Push toggle -->
                     <div class="flex items-center justify-between rounded-lg border p-4">
                         <div class="space-y-0.5">
-                            <Label for="push_enabled">{{ t('notifications.pushEnabled') }}</Label>
+                            <Label for="push_enabled">{{ $t('notifications.pushEnabled') }}</Label>
                             <p class="text-sm text-muted-foreground">
-                                {{ t('notifications.pushEnabledHelp') }}
+                                {{ $t('notifications.pushEnabledHelp') }}
                             </p>
                         </div>
                         <Switch
                             id="push_enabled"
                             v-model="form.push_enabled"
-                            @change="togglePush"
+                            @update:model-value="togglePush"
                         />
                     </div>
                 </form>

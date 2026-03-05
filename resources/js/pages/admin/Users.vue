@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue';
-import { Head, router, useForm, usePage } from '@inertiajs/vue3';
+import { Head, router, usePage } from '@inertiajs/vue3';
+import http from '@/utils/http';
 import {
     CheckCircle,
     ChevronLeft,
@@ -108,25 +109,31 @@ const showNewPasswordConfirm = ref(false);
 
 // ─────────────────────────────────── Forms ───────────────────────────────────
 
-const createForm = useForm({
+const createForm = ref({
     name: '',
     email: '',
     password: '',
     password_confirmation: '',
     role: 'user' as UserRole,
 });
+const createErrors = ref<Record<string, string>>({});
+const createLoading = ref(false);
 
-const editForm = useForm({
+const editForm = ref({
     name: '',
     email: '',
     role: 'user' as UserRole,
     active: true,
 });
+const editErrors = ref<Record<string, string>>({});
+const editLoading = ref(false);
 
-const passwordForm = useForm({
+const passwordForm = ref({
     password: '',
     password_confirmation: '',
 });
+const passwordErrors = ref<Record<string, string>>({});
+const passwordLoading = ref(false);
 
 // ─────────────────────────────────── Helpers ─────────────────────────────────
 
@@ -145,55 +152,87 @@ const roleLabel = (role: UserRole) => {
 // ─────────────────────────────────── Actions ─────────────────────────────────
 
 function openCreate() {
-    createForm.reset();
+    createForm.value = { name: '', email: '', password: '', password_confirmation: '', role: 'user' };
+    createErrors.value = {};
     showCreateDialog.value = true;
 }
 
-function submitCreate() {
-    createForm.post('/admin/users', {
-        onSuccess: () => { showCreateDialog.value = false; createForm.reset(); },
-    });
+async function submitCreate() {
+    createLoading.value = true;
+    createErrors.value = {};
+    try {
+        await http.post('/api/admin/users', createForm.value);
+        showCreateDialog.value = false;
+        createForm.value = { name: '', email: '', password: '', password_confirmation: '', role: 'user' };
+        router.reload({ only: ['users'] });
+    } catch (e: any) {
+        createErrors.value = e.response?.data?.errors ?? {};
+    } finally {
+        createLoading.value = false;
+    }
 }
 
 function openEdit(user: AdminUser) {
     selectedUser.value = user;
-    editForm.name   = user.name;
-    editForm.email  = user.email;
-    editForm.role   = user.role;
-    editForm.active = user.active;
+    editForm.value.name   = user.name;
+    editForm.value.email  = user.email;
+    editForm.value.role   = user.role;
+    editForm.value.active = user.active;
+    editErrors.value = {};
     showEditDialog.value = true;
 }
 
-function submitEdit() {
+async function submitEdit() {
     if (!selectedUser.value) return;
-    editForm.patch(`/admin/users/${selectedUser.value.id}`, {
-        onSuccess: () => { showEditDialog.value = false; },
-    });
+    editLoading.value = true;
+    editErrors.value = {};
+    try {
+        await http.patch(`/api/admin/users/${selectedUser.value.id}`, editForm.value);
+        showEditDialog.value = false;
+        router.reload({ only: ['users'] });
+    } catch (e: any) {
+        editErrors.value = e.response?.data?.errors ?? {};
+    } finally {
+        editLoading.value = false;
+    }
 }
 
 function openResetPassword(user: AdminUser) {
     selectedUser.value = user;
-    passwordForm.reset();
+    passwordForm.value = { password: '', password_confirmation: '' };
+    passwordErrors.value = {};
     showPasswordDialog.value = true;
 }
 
-function submitResetPassword() {
+async function submitResetPassword() {
     if (!selectedUser.value) return;
-    passwordForm.post(`/admin/users/${selectedUser.value.id}/reset-password`, {
-        onSuccess: () => { showPasswordDialog.value = false; passwordForm.reset(); },
-    });
+    passwordLoading.value = true;
+    passwordErrors.value = {};
+    try {
+        await http.post(`/api/admin/users/${selectedUser.value.id}/reset-password`, passwordForm.value);
+        showPasswordDialog.value = false;
+        passwordForm.value = { password: '', password_confirmation: '' };
+        router.reload({ only: ['users'] });
+    } catch (e: any) {
+        passwordErrors.value = e.response?.data?.errors ?? {};
+    } finally {
+        passwordLoading.value = false;
+    }
 }
 
-function sendPasswordResetLink(user: AdminUser) {
-    router.post(`/admin/users/${user.id}/send-password-reset`);
+async function sendPasswordResetLink(user: AdminUser) {
+    await http.post(`/api/admin/users/${user.id}/send-password-reset`);
+    router.reload({ only: ['users'] });
 }
 
-function disableTwoFactor(user: AdminUser) {
-    router.post(`/admin/users/${user.id}/disable-two-factor`);
+async function disableTwoFactor(user: AdminUser) {
+    await http.post(`/api/admin/users/${user.id}/disable-two-factor`);
+    router.reload({ only: ['users'] });
 }
 
-function toggleActive(user: AdminUser) {
-    router.post(`/admin/users/${user.id}/toggle-active`);
+async function toggleActive(user: AdminUser) {
+    await http.post(`/api/admin/users/${user.id}/toggle-active`);
+    router.reload({ only: ['users'] });
 }
 
 function openDelete(user: AdminUser) {
@@ -201,11 +240,11 @@ function openDelete(user: AdminUser) {
     showDeleteConfirm.value = true;
 }
 
-function confirmDelete() {
+async function confirmDelete() {
     if (!selectedUser.value) return;
-    router.delete(`/admin/users/${selectedUser.value.id}`, {
-        onSuccess: () => { showDeleteConfirm.value = false; },
-    });
+    await http.delete(`/api/admin/users/${selectedUser.value.id}`);
+    showDeleteConfirm.value = false;
+    router.reload({ only: ['users'] });
 }
 
 // Flash message
@@ -367,12 +406,12 @@ const flash = computed(() => (page.props as any).flash as { success?: string; er
                     <div class="grid gap-2">
                         <Label for="c_name">Nome</Label>
                         <Input id="c_name" v-model="createForm.name" placeholder="Nome completo" required />
-                        <InputError :message="createForm.errors.name" />
+                        <InputError :message="createErrors.name" />
                     </div>
                     <div class="grid gap-2">
                         <Label for="c_email">E-mail</Label>
                         <Input id="c_email" type="email" v-model="createForm.email" placeholder="email@dominio.com" required />
-                        <InputError :message="createForm.errors.email" />
+                        <InputError :message="createErrors.email" />
                     </div>
                     <div class="grid gap-2">
                         <Label for="c_role">Papel</Label>
@@ -380,7 +419,7 @@ const flash = computed(() => (page.props as any).flash as { success?: string; er
                             class="rounded-md border border-input bg-background px-3 py-2 text-sm shadow-sm">
                             <option v-for="r in props.roles" :key="r" :value="r">{{ roleLabel(r) }}</option>
                         </select>
-                        <InputError :message="createForm.errors.role" />
+                        <InputError :message="createErrors.role" />
                     </div>
                     <div class="grid gap-2">
                         <Label for="c_password">Senha</Label>
@@ -399,7 +438,7 @@ const flash = computed(() => (page.props as any).flash as { success?: string; er
                                 <EyeOff v-else class="size-4" />
                             </button>
                         </div>
-                        <InputError :message="createForm.errors.password" />
+                        <InputError :message="createErrors.password" />
                     </div>
                     <div class="grid gap-2">
                         <Label for="c_confirm">Confirmar senha</Label>
@@ -418,11 +457,11 @@ const flash = computed(() => (page.props as any).flash as { success?: string; er
                                 <EyeOff v-else class="size-4" />
                             </button>
                         </div>
-                        <InputError :message="createForm.errors.password_confirmation" />
+                        <InputError :message="createErrors.password_confirmation" />
                     </div>
                     <DialogFooter>
                         <Button type="button" variant="outline" @click="showCreateDialog = false">Cancelar</Button>
-                        <Button type="submit" :disabled="createForm.processing">Criar usuário</Button>
+                        <Button type="submit" :disabled="createLoading">Criar usuário</Button>
                     </DialogFooter>
                 </form>
             </DialogContent>
@@ -440,12 +479,12 @@ const flash = computed(() => (page.props as any).flash as { success?: string; er
                     <div class="grid gap-2">
                         <Label for="e_name">Nome</Label>
                         <Input id="e_name" v-model="editForm.name" required />
-                        <InputError :message="editForm.errors.name" />
+                        <InputError :message="editErrors.name" />
                     </div>
                     <div class="grid gap-2">
                         <Label for="e_email">E-mail</Label>
                         <Input id="e_email" type="email" v-model="editForm.email" required />
-                        <InputError :message="editForm.errors.email" />
+                        <InputError :message="editErrors.email" />
                     </div>
                     <div class="grid gap-2">
                         <Label for="e_role">Papel</Label>
@@ -453,7 +492,7 @@ const flash = computed(() => (page.props as any).flash as { success?: string; er
                             class="rounded-md border border-input bg-background px-3 py-2 text-sm shadow-sm">
                             <option v-for="r in props.roles" :key="r" :value="r">{{ roleLabel(r) }}</option>
                         </select>
-                        <InputError :message="editForm.errors.role" />
+                        <InputError :message="editErrors.role" />
                     </div>
                     <div class="flex items-center gap-2">
                         <input id="e_active" type="checkbox" v-model="editForm.active" class="size-4 rounded border-input" />
@@ -461,7 +500,7 @@ const flash = computed(() => (page.props as any).flash as { success?: string; er
                     </div>
                     <DialogFooter>
                         <Button type="button" variant="outline" @click="showEditDialog = false">Cancelar</Button>
-                        <Button type="submit" :disabled="editForm.processing">Salvar alterações</Button>
+                        <Button type="submit" :disabled="editLoading">Salvar alterações</Button>
                     </DialogFooter>
                 </form>
             </DialogContent>
@@ -481,16 +520,16 @@ const flash = computed(() => (page.props as any).flash as { success?: string; er
                     <div class="grid gap-2">
                         <Label for="rp_password">Nova senha</Label>
                         <Input id="rp_password" type="password" v-model="passwordForm.password" placeholder="Mínimo 8 caracteres" required />
-                        <InputError :message="passwordForm.errors.password" />
+                        <InputError :message="passwordErrors.password" />
                     </div>
                     <div class="grid gap-2">
                         <Label for="rp_confirm">Confirmar nova senha</Label>
                         <Input id="rp_confirm" type="password" v-model="passwordForm.password_confirmation" placeholder="Repita a senha" required />
-                        <InputError :message="passwordForm.errors.password_confirmation" />
+                        <InputError :message="passwordErrors.password_confirmation" />
                     </div>
                     <DialogFooter>
                         <Button type="button" variant="outline" @click="showPasswordDialog = false">Cancelar</Button>
-                        <Button type="submit" :disabled="passwordForm.processing">Redefinir senha</Button>
+                        <Button type="submit" :disabled="passwordLoading">Redefinir senha</Button>
                     </DialogFooter>
                 </form>
             </DialogContent>

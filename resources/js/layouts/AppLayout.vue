@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import AppLayout from '@/layouts/app/AppSidebarLayout.vue';
 import type { BreadcrumbItem } from '@/types';
+import { onMounted, onUnmounted } from 'vue';
 
 type Props = {
     breadcrumbs?: BreadcrumbItem[];
@@ -9,6 +10,7 @@ type Props = {
 withDefaults(defineProps<Props>(), {
     breadcrumbs: () => [],
 });
+
 </script>
 
 <template>

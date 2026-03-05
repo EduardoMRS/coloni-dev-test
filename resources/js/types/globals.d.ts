@@ -1,4 +1,6 @@
 import type { AppPageProps } from './index';
+import type { Emitter } from 'mitt';
+import type { Events } from '@/utils/eventBus';
 
 // Extend ImportMeta interface for Vite...
 declare module 'vite/client' {
@@ -22,6 +24,8 @@ declare module 'vue' {
         $inertia: typeof Router;
         $page: Page;
         $headManager: ReturnType<typeof createHeadManager>;
+        $bus: Emitter<Events>;
+        $t: (key: string, ...args: unknown[]) => string;
     }
 }
 
@@ -36,5 +40,13 @@ declare global {
 
     interface Window {
         notify?: Notify
+        bus?: Emitter<Events>
+        $bus?: Emitter<Events>
+        $t?: (key: string, ...args: unknown[]) => string
     }
+
+    // Disponíveis como identificadores globais em script setup
+    // (registrados em window via plugins, acessíveis em runtime no browser)
+    const $t: (key: string, ...args: unknown[]) => string
+    const $bus: Emitter<Events>
 }
